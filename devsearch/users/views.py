@@ -3,8 +3,8 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User
-from .models import Profile
-from .forms import CustomUserCreationForm, ProfileForm, SkillForm
+from .models import Profile, Message
+from .forms import CustomUserCreationForm, ProfileForm, SkillForm, MessageForm
 from .utils import searchProfiles, paginateProfiles
 
 def loginUser(request):
@@ -31,7 +31,7 @@ def loginUser(request):
         else:
             messages.error(request,'Username OR password is incorrect')
 
-    return render(request, 'users/login_register.html')
+    return render(request, 'users/login-register.html')
 
 def logoutUser(request):
     logout(request)
@@ -59,7 +59,7 @@ def registerUser(request):
                 request, 'An error has occurred during registration')
 
     context = {'page':page, 'form':form}
-    return render(request, 'users/login_register.html', context)
+    return render(request, 'users/login-register.html', context)
 
 def profiles(request):
     profiles, search_query = searchProfiles(request)
@@ -102,7 +102,7 @@ def editAccount(request):
             return redirect('account')
 
     context = {'form': form}
-    return render(request, 'users/profile_form.html', context)
+    return render(request, 'users/profile-form.html', context)
 
 @login_required(login_url='login')
 def createSkill(request):
@@ -119,7 +119,7 @@ def createSkill(request):
             return redirect('account')
 
     context = {'form': form}
-    return render(request, 'users/skill_form.html', context)
+    return render(request, 'users/skill-form.html', context)
 
 @login_required(login_url='login')
 def updateSkill(request, pk):
@@ -135,8 +135,9 @@ def updateSkill(request, pk):
             return redirect('account')
 
     context = {'form': form}
-    return render(request, 'users/skill_form.html', context)
+    return render(request, 'users/skill-form.html', context)
 
+@login_required(login_url='login')
 def deleteSkill(request, pk):
     profile = request.user.profile
     skill = profile.skill_set.get(id=pk)
@@ -147,3 +148,48 @@ def deleteSkill(request, pk):
 
     context = {'object': skill}
     return render(request, 'delete-template.html', context)
+
+@login_required(login_url='login')
+def inbox(request):
+    profile = request.user.profile
+    messageRequests = profile.messages.all()
+    unreadCount = messageRequests.filter(is_read=False).count()
+    context = {"messageRequests":messageRequests, "unreadCount":unreadCount}
+    return render(request, 'users/inbox.html', context)
+    
+@login_required(login_url='login')
+def viewMessage(request, pk):
+    profile = request.user.profile
+    message = profile.messages.get(id=pk)
+    if message.is_read == False:
+        message.is_read = True
+        message.save()
+    context = {'message': message}
+    return render(request, 'users/message.html', context)
+
+def createMessage(request, pk):
+    recipient = Profile.objects.get(id=pk)
+    form = MessageForm()
+
+    try:
+        sender = request.user.profile
+    except:
+        sender = None
+
+    if request.method == 'POST':
+        form = MessageForm(request.POST)
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.sender = sender
+            message.recipient = recipient
+
+            if sender:
+                message.name = sender.name
+                message.email = sender.email
+            message.save()
+
+            messages.success(request, 'Your message was successfully sent!')
+            return redirect('user-profile', pk=recipient.id)
+
+    context = {"recipient":recipient, 'form':form}
+    return render(request, 'users/message-form.html', context)
