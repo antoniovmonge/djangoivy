@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'devsearch-antoniovm.herokuapp.com/']
 
 
 # Application definition
@@ -236,3 +236,9 @@ AWS_S3_REGION_NAME = 'eu-central-1'
 
 AWS_QUERYSTRING_AUTH = False
 AWS_S3_FILE_OVERWRITE = False
+
+
+
+if os.getcwd() == '/app':
+    DEBUG = False
+    
